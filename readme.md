@@ -14,3 +14,5 @@ url - ссылка на сам новеллу без доп query значени
 apiUrl - этаже ссылка только на апи, всё что меняется это домен ranobelib.me/ru/ на api2.mangalib.me/api/manga/
 outputDir - куда сохранится файл
 bookName - имя файла
+
+ссылка на ui проекта https://github.com/GDTuka/ranobelib-fb2-converter-ui
