@@ -8,8 +8,9 @@
             "mode": "auto",
             "program": "${workspaceRoot}/main.go",
             "args": [
-                "{\"bookName\":\"someName\",\"url\":\"https://ranobelib.me/ru/154310--too-many-losing-heroines\",\"apiUrl\":\"https://api2.mangalib.me/api/manga/154310--too-many-losing-heroines\",\"outputDir\":\"A:/work/ranobelib_parser/output\"}"
+                "{\"bookName\":\"someName\",\"url\":\"https://ranobelib.me/ru/15630--mushoku-tensei\",\"apiUrl\":\"https://api2.mangalib.me/api/manga/15630--mushoku-tensei\",\"outputDir\":\"A:/work/ranobelib_parser/output\"}"
             ]
         }
     ]
 }
+

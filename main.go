@@ -204,7 +204,6 @@ func handleDownloadAll() {
 			// First, find and process images within the text-content div
 			imgRe := regexp.MustCompile(`<img[^>]+src="([^"]+)"[^>]*>`)
 			imgMatches := imgRe.FindAllStringSubmatch(divContent, -1)
-
 			if len(imgMatches) < 1 {
 				imgRe = regexp.MustCompile(`<img[^>]+class="_loaded node-image-item"[^>]+src="([^"]+)"[^>]*>`)
 				imgMatches = imgRe.FindAllStringSubmatch(divContent, -1)
@@ -218,7 +217,9 @@ func handleDownloadAll() {
 					imgURL := match[1]
 					if !strings.HasPrefix(imgURL, "http") {
 						// Handle relative URLs
-						if strings.HasPrefix(imgURL, "//") {
+						if !strings.Contains(imgURL, "ranobelib.me") {
+							imgURL = "https://ranobelib.me" + imgURL
+						} else if strings.HasPrefix(imgURL, "//") {
 							imgURL = "https:" + imgURL
 						} else {
 							imgURL = "https://" + strings.TrimPrefix(imgURL, "/")
