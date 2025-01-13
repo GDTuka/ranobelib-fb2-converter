@@ -40,7 +40,7 @@ type ChapterData struct {
 // Define your Response and Item structs here
 
 type Config struct {
-    BookaName string `json:"bookaName"`
+    BookName string `json:"bookName"`
     Url      string `json:"url"`
     ApiUrl   string `json:"apiUrl"`
     OutputDir string `json:"outputDir"`
@@ -160,7 +160,7 @@ func main() {
     }
     
     // Define the filename
-    filename := config.BookaName + ".fb2"
+    filename := config.BookName + ".fb2"
     
     path := filepath.Join(config.OutputDir, filename)
 
