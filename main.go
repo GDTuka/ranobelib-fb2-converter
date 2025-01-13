@@ -21,203 +21,226 @@ import (
 )
 
 type Response struct {
-    Data []Item `json:"data"`
+	Data []Item `json:"data"`
 }
 
 type Item struct {
-    ID     int    `json:"id"`
-    Volume string `json:"volume"`
-    Number string `json:"number"`
+	ID     int    `json:"id"`
+	Volume string `json:"volume"`
+	Number string `json:"number"`
 }
 
 type ContentRes struct {
-    Data ChapterData `json:"data"`
+	Data ChapterData `json:"data"`
 }
 
 type ChapterData struct {
-    Content          *string    `json:"content"`
+	Content *string `json:"content"`
 }
-// Define your Response and Item structs here
 
 type Config struct {
-    BookName string `json:"bookName"`
-    Url      string `json:"url"`
-    ApiUrl   string `json:"apiUrl"`
-    OutputDir string `json:"outputDir"`
+	BookName  string `json:"bookName"`
+	Url       string `json:"url"`
+	ApiUrl    string `json:"apiUrl"`
+	OutputDir string `json:"outputDir"`
 }
 
 func main() {
+	if len(os.Args) < 2 {
+		fmt.Println("No JSON parameter provided")
+		return
+	}
 
-    if len(os.Args) < 2 {
-        fmt.Println("No JSON parameter provided")
-        return
-    }
+	jsonParam := os.Args[1]
 
-    jsonParam := os.Args[1]
-    
-    var config Config
-    err := json.Unmarshal([]byte(jsonParam), &config)
-    if err != nil {
-        fmt.Println("Error parsing JSON:", err)
-        return
-    }
+	var config Config
+	err := json.Unmarshal([]byte(jsonParam), &config)
+	if err != nil {
+		fmt.Println("Error parsing JSON:", err)
+		return
+	}
 
-    uiRequestUrl := config.Url
-
+	uiRequestUrl := config.Url
 	requestUrl := config.ApiUrl
-
 	params := "/chapters"
 
-    // Create a new request
-    resp, err := http.Get(requestUrl + params)
+	// Create a new request
+	resp, err := http.Get(requestUrl + params)
+	if err != nil {
+		panic(err)
+	}
 
-    if err != nil {
-        panic(err)
-    }
-   
-    fmt.Println("Get request successful")
-   
-    defer resp.Body.Close()
+	fmt.Println("Get request successful")
 
-    // Read the response body
-    body, err := io.ReadAll(resp.Body)
-    fmt.Println("Read body")
-    if err != nil {
-        panic(err)
-    }
+	defer resp.Body.Close()
 
-    // Convert to UTF-8
-    bodyReader := bytes.NewReader(body)
-    e, _, _ := charset.DetermineEncoding(body, resp.Header.Get("Content-Type"))
-    utf8Reader := transform.NewReader(bodyReader, e.NewDecoder())
-    decodedBody, err := io.ReadAll(utf8Reader)
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println("Decode body")
+	// Read the response body
+	body, err := io.ReadAll(resp.Body)
+	fmt.Println("Read body")
+	if err != nil {
+		panic(err)
+	}
 
-    var response Response
-    
-    // Unmarshal the JSON data into the response variable
-    err = json.Unmarshal(decodedBody, &response)
+	// Convert to UTF-8
+	bodyReader := bytes.NewReader(body)
+	e, _, _ := charset.DetermineEncoding(body, resp.Header.Get("Content-Type"))
+	utf8Reader := transform.NewReader(bodyReader, e.NewDecoder())
+	decodedBody, err := io.ReadAll(utf8Reader)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("Decode body")
 
-    if err != nil {
-        panic(err)
-    }
+	var response Response
 
-    contentString  := ""
+	err = json.Unmarshal(decodedBody, &response)
+	if err != nil {
+		panic(err)
+	}
 
-    // Access the Data
-    for _, item := range response.Data {
-	
-        modifiedUrl := changeVolumeChapter(uiRequestUrl + "/read/v23/c19?bid&ui=5260317", item.Volume, item.Number)
+	contentString := ""
 
+	// Create context with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 60*30*time.Second)
+	defer cancel()
 
-        ctx, cancel := chromedp.NewContext(context.Background())
-        defer cancel()
-    
-        fmt.Println(modifiedUrl)
+	// Create Chrome instance
+	opts := append(chromedp.DefaultExecAllocatorOptions[:],
+		chromedp.Flag("disable-web-security", true),
+		chromedp.Flag("no-sandbox", true),
+		chromedp.Flag("disable-setuid-sandbox", true),
+	)
 
-        // Navigate to the page and wait for it to load
-        var html string
-        err = chromedp.Run(ctx,
-            chromedp.Navigate(modifiedUrl),
-            chromedp.OuterHTML("html", &html),
-        )
-    
-        if err != nil {
-            log.Fatal(err)
-        }
-       
-        // Find the div with class "text-content"
-        re := regexp.MustCompile(`<div\s+class="text-content"[^>]*>([\s\S]*?)</div>`)
-        matches := re.FindStringSubmatch(html)
-    
-         
-        if len(matches) > 1 {
-            divContent := matches[1]
-            
-            // Find all child elements
-            childRe := regexp.MustCompile(`<(\w+)[^>]*>([^<]*)</\w+>`)
-            childMatches := childRe.FindAllStringSubmatch(divContent, -1)
-    
-            for _, child := range childMatches {
-                if len(child) > 2 {
-                    contentString += fmt.Sprintf("%s\n\n", strings.TrimSpace(child[0]))
-                }
-            }
-        } else {
-            fmt.Println("Div with class 'text-content' not found")
-        }
+	allocCtx, cancel := chromedp.NewExecAllocator(ctx, opts...)
+	defer cancel()
+
+	ctx, cancel = chromedp.NewContext(allocCtx)
+	defer cancel()
+
+	// Access the Data
+	for _, item := range response.Data {
+		modifiedUrl := changeVolumeChapter(uiRequestUrl+"/read/v23/c19?ui=5260317", item.Volume, item.Number)
+		fmt.Println(modifiedUrl)
+
+		var html string
+		err = chromedp.Run(ctx,
+			chromedp.Navigate(modifiedUrl),
+			// Wait for body to be present
+			chromedp.WaitReady("body", chromedp.ByQuery),
+			// Wait for text-content div to be present
+			chromedp.WaitVisible(".text-content", chromedp.ByQuery),
+			// Additional wait to ensure JavaScript loads
+			chromedp.Sleep(2*time.Second),
+			chromedp.OuterHTML("html", &html),
+		)
+
+		if err != nil {
+			log.Printf("Error processing URL %s: %v", modifiedUrl, err)
+			continue
+		}
+
+		headerRe := regexp.MustCompile(`<h1\s+class="k6_cr"[^>]*>([\s\S]*?)</h1>`)
+
+		headerMathes := headerRe.FindStringSubmatch(html)
+
+		if len(headerMathes) > 1 {
+			contentString += fmt.Sprintf("%s\n\n", strings.TrimSpace(headerMathes[0]))
+		} else {
+			fmt.Println("H1 with class 'k6_cr' not found")
+			fmt.Println(html)
+		}
+
+		// Find the div with class "text-content"
+		re := regexp.MustCompile(`<div\s+class="text-content"[^>]*>([\s\S]*?)</div>`)
+		matches := re.FindStringSubmatch(html)
+
+		if len(matches) < 1 {
+			re := regexp.MustCompile(`<div\s+class="node-doc text-content"[^>]*>([\s\S]*?)</div>`)
+			matches = re.FindStringSubmatch(html)
+		}
+
+		if len(matches) > 1 {
+			divContent := matches[1]
+
+			// Find all child elements
+			childRe := regexp.MustCompile(`<(\w+)[^>]*>([^<]*)</\w+>`)
+			childMatches := childRe.FindAllStringSubmatch(divContent, -1)
+
+			for _, child := range childMatches {
+				if len(child) > 2 {
+					contentString += fmt.Sprintf("%s\n\n", strings.TrimSpace(child[0]))
+				}
+			}
+		} else {
+			fmt.Println("Div with class 'text-content' not found")
+			fmt.Println(html)
+		}
 
 		time.Sleep(1 * time.Second)
+	}
 
-    }
+	contentFB2, err := convertHTMLToFB2(contentString)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    contentFB2, err := convertHTMLToFB2(contentString)
-    if err != nil {
-        log.Fatal(err)
-    }
-    
-    // Define the filename
-    filename := config.BookName + ".fb2"
-    
-    path := filepath.Join(config.OutputDir, filename)
+	// Define the filename
+	filename := config.BookName + ".fb2"
+	path := filepath.Join(config.OutputDir, filename)
 
-    // Write the FB2 content to the file in the current directory
-    err = os.WriteFile(path, []byte(contentFB2), 0644)
-    if err != nil {
-        log.Fatal(err)
-    }
-    
-    fmt.Printf("FB2 file successfully created: %s\n", filename)
+	// Write the FB2 content to the file
+	err = os.WriteFile(path, []byte(contentFB2), 0644)
+	if err != nil {
+		log.Fatal(err)
+	}
 
+	fmt.Printf("FB2 file successfully created: %s\n", filename)
 }
 
 func changeVolumeChapter(url string, newVolume string, newChapter string) string {
 	re := regexp.MustCompile(`/v\d+/c\d+`)
-    return re.ReplaceAllString(url, fmt.Sprintf("/v%s/c%s", newVolume, newChapter))
+	return re.ReplaceAllString(url, fmt.Sprintf("/v%s/c%s", newVolume, newChapter))
 }
 
 func convertHTMLToFB2(htmlContent string) (string, error) {
-    doc, err := html.Parse(strings.NewReader(htmlContent))
-    if err != nil {
-        return "", err
-    }
+	doc, err := html.Parse(strings.NewReader(htmlContent))
+	if err != nil {
+		return "", err
+	}
 
-    var fb2 bytes.Buffer
-    fb2.WriteString(`<?xml version="1.0" encoding="UTF-8"?>
+	var fb2 bytes.Buffer
+	fb2.WriteString(`<?xml version="1.0" encoding="UTF-8"?>
 <FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0">
 <body>`)
 
-    var f func(*html.Node)
-    f = func(n *html.Node) {
-        if n.Type == html.ElementNode {
-            switch n.Data {
-            case "h1":
-                fb2.WriteString("<title>")
-                for c := n.FirstChild; c != nil; c = c.NextSibling {
-                    if c.Type == html.TextNode {
-                        fb2.WriteString(c.Data)
-                    }
-                }
-                fb2.WriteString("</title>")
-            case "p":
-                fb2.WriteString("<p>")
-                for c := n.FirstChild; c != nil; c = c.NextSibling {
-                    if c.Type == html.TextNode {
-                        fb2.WriteString(c.Data)
-                    }
-                }
-                fb2.WriteString("</p>")
-            }
-        }
-        for c := n.FirstChild; c != nil; c = c.NextSibling {
-            f(c)
-        }
-    }
-    f(doc)
+	var f func(*html.Node)
+	f = func(n *html.Node) {
+		if n.Type == html.ElementNode {
+			switch n.Data {
+			case "h1":
+				fb2.WriteString("<title>")
+				for c := n.FirstChild; c != nil; c = c.NextSibling {
+					if c.Type == html.TextNode {
+						fb2.WriteString(c.Data)
+					}
+				}
+				fb2.WriteString("</title>")
+			case "p":
+				fb2.WriteString("<p>")
+				for c := n.FirstChild; c != nil; c = c.NextSibling {
+					if c.Type == html.TextNode {
+						fb2.WriteString(c.Data)
+					}
+				}
+				fb2.WriteString("</p>")
+			}
+		}
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			f(c)
+		}
+	}
 
-    fb2.WriteString("</body></FictionBook>")
-    return fb2.String(), nil
+	f(doc)
+	fb2.WriteString("</body></FictionBook>")
+	return fb2.String(), nil
 }
