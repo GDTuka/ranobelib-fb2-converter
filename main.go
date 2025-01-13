@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -38,11 +39,32 @@ type ChapterData struct {
 }
 // Define your Response and Item structs here
 
+type Config struct {
+    BookaName string `json:"bookaName"`
+    Url      string `json:"url"`
+    ApiUrl   string `json:"apiUrl"`
+    OutputDir string `json:"outputDir"`
+}
+
 func main() {
 
-    uiRequestUrl := "https://ranobelib.me/ru/24263--about-the-reckless-girl-who-kept-challenging-a-reborn-man-like-me"
+    configFile , err := os.ReadFile("config.json")
 
-	requestUrl := "https://api2.mangalib.me/api/manga/24263--about-the-reckless-girl-who-kept-challenging-a-reborn-man-like-me"
+    if err != nil {
+        panic(err)
+    }
+
+    var config Config
+
+    err = json.Unmarshal(configFile, &config)
+
+    if err != nil {
+        panic(err)
+    }
+
+    uiRequestUrl := config.Url
+
+	requestUrl := config.ApiUrl
 
 	params := "/chapters"
 
@@ -138,10 +160,12 @@ func main() {
     }
     
     // Define the filename
-    filename := "book.fb2"
+    filename := config.BookaName + ".fb2"
     
+    path := filepath.Join(config.OutputDir, filename)
+
     // Write the FB2 content to the file in the current directory
-    err = os.WriteFile(filename, []byte(contentFB2), 0644)
+    err = os.WriteFile(path, []byte(contentFB2), 0644)
     if err != nil {
         log.Fatal(err)
     }
