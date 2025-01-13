@@ -48,18 +48,18 @@ type Config struct {
 
 func main() {
 
-    configFile , err := os.ReadFile("config.json")
-
-    if err != nil {
-        panic(err)
+    if len(os.Args) < 2 {
+        fmt.Println("No JSON parameter provided")
+        return
     }
 
+    jsonParam := os.Args[1]
+    
     var config Config
-
-    err = json.Unmarshal(configFile, &config)
-
+    err := json.Unmarshal([]byte(jsonParam), &config)
     if err != nil {
-        panic(err)
+        fmt.Println("Error parsing JSON:", err)
+        return
     }
 
     uiRequestUrl := config.Url
