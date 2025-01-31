@@ -8,9 +8,8 @@
             "mode": "auto",
             "program": "${workspaceRoot}/main.go",
             "args": [
-                "{\"bookName\":\"someName\",\"url\":\"https://ranobelib.me/ru/15630--mushoku-tensei\",\"apiUrl\":\"https://api2.mangalib.me/api/manga/15630--mushoku-tensei\",\"outputDir\":\"A:/work/ranobelib_parser/output\"}"
+                "{\"bookName\":\"someName\",\"url\":\"https://ranobelib.me/ru/15781--dungeon-ni-deai-wo-motomeru-no-wa-machigatteiru-darou-ka\",\"apiUrl\":\"https://api2.mangalib.me/api/manga/15781--dungeon-ni-deai-wo-motomeru-no-wa-machigatteiru-darou-ka\",\"outputDir\":\"A:/work/ranobelib_parser/output\"}"
             ]
         }
     ]
 }
-
