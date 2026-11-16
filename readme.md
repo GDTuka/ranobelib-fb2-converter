@@ -1,18 +1,59 @@
-# Как работает
+# RanobeLib → FB2 converter
 
-Чтобы программа работала ей нужно передать конфиг параметр ввиде json
-Пример json
-```
+Конвертер получает список и содержимое глав через публичный API RanobeLib/NovelsLib, загружает иллюстрации и собирает один FB2-файл. Chromium и JWT для публичных книг не требуются.
+
+## Требования
+
+- Go 1.23 или новее.
+- Сетевой доступ к `api.novelslib.me` и зеркалу изображений `v1.novelslib.me`.
+
+## Структура
+
+- `cmd/ranobelib-fb2-converter` — CLI.
+- `internal/config` — загрузка и проверка конфигурации.
+- `internal/converter` — API-клиент, преобразование глав и загрузка изображений.
+- `internal/fb2` — построение FB2.
+- `output` — локальные результаты конвертации; FB2-файлы исключены из Git.
+
+## Конфигурация
+
+`config.json` уже настроен на книгу «Приговорённый быть героем»:
+
+```json
 {
-    "bookName":"someName",
-    "url":"https://ranobelib.me/ru/24263--about-the-reckless-girl-who-kept-challenging-a-reborn-man-like-me",
-    "apiUrl":"https://api2.mangalib.me/api/manga/24263--about-the-reckless-girl-who-kept-challenging-a-reborn-man-like-me",
-    "outputDir":"A:/work/ranobelib_parser/output"
+  "bookName": "Приговорённый быть героем",
+  "url": "https://ranobelib.me/ru/book/218522--yuusha-kei-ni-shosu-choubatsu-yuusha-9004-tai-keimu-kiroku",
+  "apiUrl": "https://api.novelslib.me/api/manga/218522--yuusha-kei-ni-shosu-choubatsu-yuusha-9004-tai-keimu-kiroku",
+  "outputDir": "./output"
 }
 ```
-url - ссылка на сам новеллу без доп query значений
-apiUrl - этаже ссылка только на апи, всё что меняется это домен ranobelib.me/ru/ на api2.mangalib.me/api/manga/
-outputDir - куда сохранится файл
-bookName - имя файла
 
-ссылка на ui проекта https://github.com/GDTuka/ranobelib-fb2-converter-ui
+Для другой книги замените название и оба адреса. Все поля обязательны; `url` и `apiUrl` должны быть абсолютными HTTP(S)-адресами.
+
+## Запуск
+
+```bash
+go run ./cmd/ranobelib-fb2-converter -config ./config.json
+```
+
+Конвертер ограничивает частоту запросов к API и повторяет временные сетевые ошибки (`429` и `5xx`). Выходной файл заменяется атомарно только после успешной загрузки и преобразования всех глав, поэтому ошибка не уничтожает уже существующий FB2.
+
+Для текущей конфигурации результат записывается в:
+
+```text
+output/Приговорённый быть героем.fb2
+```
+
+## Проверка
+
+```bash
+go test ./... -race
+```
+
+Чтобы дополнительно разобрать реальный созданный файл как XML и проверить число секций:
+
+```bash
+FB2_INTEGRATION_FILE="$PWD/output/Приговорённый быть героем.fb2" \
+FB2_EXPECTED_SECTIONS=190 \
+go test ./internal/fb2 -run TestGeneratedBookFile -v
+```

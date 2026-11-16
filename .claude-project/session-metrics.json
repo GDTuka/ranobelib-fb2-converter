@@ -1,0 +1,10 @@
+{
+  "tokens_input": 0,
+  "tokens_output": 0,
+  "tokens_total": 0,
+  "cost_usd": null,
+  "tool_calls": 0,
+  "model": "",
+  "messages": 0,
+  "duration_sec": 1360
+}

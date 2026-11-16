@@ -1,7 +1,7 @@
 {
-    "bookName":"Реинкарнация безработного. Избыточность",
-    "url":"https://ranobelib.me/ru/141001--mushoku-tensei-dasokuhen",
-    "apiUrl":"https://api2.mangalib.me/api/manga/141001--mushoku-tensei-dasokuhen",
-    "outputDir":"A:/work/git_share/ranobelib_parser/go_api"
+  "bookName": "Приговорённый быть героем",
+  "url": "https://ranobelib.me/ru/book/218522--yuusha-kei-ni-shosu-choubatsu-yuusha-9004-tai-keimu-kiroku",
+  "apiUrl": "https://api.novelslib.me/api/manga/218522--yuusha-kei-ni-shosu-choubatsu-yuusha-9004-tai-keimu-kiroku",
+  "outputDir": "./output"
 }
 
